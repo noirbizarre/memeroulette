@@ -4,6 +4,9 @@
   "description": "Randomly pick a meme by spinning a roulette",
   "type": "module",
   "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
