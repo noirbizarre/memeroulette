@@ -1,22 +1,40 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import RouletteWheel from './components/RouletteWheel.vue'
 import MemeReveal from './components/MemeReveal.vue'
 import ProviderSelect from './components/ProviderSelect.vue'
 import { providers, getProvider } from './providers'
 import { shuffle } from './lib/picker'
+import { buildSearch, parseDeepLink } from './lib/deeplink'
 import type { Category, Meme, MemeProvider } from './types'
 
 // Cap the number of wheel segments for readability.
 const MAX_SEGMENTS = 10
 
+const defaultProviderId = providers[0]?.id ?? ''
+
+// Restore filters from the URL query string so shared deep links reopen with
+// the same provider/category/keyword. Assigned synchronously during setup,
+// before the watchers below are registered, so they are not reset on load.
+const initial = parseDeepLink(window.location.search)
+
 // Default to the first registered provider; the picker is shown when more than
-// one provider is available.
-const providerId = ref<string>(providers[0]?.id ?? '')
+// one provider is available. Unknown provider ids fall back to the default.
+const providerId = ref<string>(
+  initial.providerId && getProvider(initial.providerId) ? initial.providerId : defaultProviderId,
+)
 const provider = computed<MemeProvider>(() => getProvider(providerId.value) ?? providers[0])
 
-const categorySlug = ref<string>('')
-const keyword = ref<string>('')
+const categorySlug = ref<string>(initial.categorySlug ?? '')
+const keyword = ref<string>(initial.keyword ?? '')
+
+// One-shot: auto-spin on the initial load only when the deep link requested it.
+let pendingAutoSpin = initial.spin === true
+
+const wheel = ref<InstanceType<typeof RouletteWheel> | null>(null)
+
+const copied = ref(false)
+let copiedTimer: number | undefined
 
 const categories = ref<Category[]>([])
 const categoriesLoading = ref(false)
@@ -59,6 +77,7 @@ async function loadMemes(): Promise<void> {
   pool.value = []
   wheelMemes.value = []
   result.value = null
+  let autoSpin = false
   try {
     const memes = await provider.value.listMemes({
       category: selectedCategory.value,
@@ -71,17 +90,47 @@ async function loadMemes(): Promise<void> {
     }
     pool.value = memes
     resampleWheel()
+    // Defer the auto-spin until after `memesLoading` clears below, otherwise the
+    // wheel is still hidden behind the loading state and its ref is not mounted.
+    autoSpin = pendingAutoSpin && wheelMemes.value.length > 0
   } catch (e) {
     memesError.value = e instanceof Error ? e.message : 'Failed to load memes.'
   } finally {
     memesLoading.value = false
   }
+
+  if (autoSpin) {
+    pendingAutoSpin = false
+    // Wait for the wheel to mount now that the loading state has cleared.
+    await nextTick()
+    // The wheel animates via a CSS transition on `transform`. Triggering the
+    // spin in the same frame the element first mounts skips the transition (the
+    // element is painted straight at its final rotation). Wait for two animation
+    // frames so the browser paints the initial rotation before it changes.
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    )
+    wheel.value?.spin()
+  }
+}
+
+// Keep the address bar in sync with the current filters (never adds the `spin`
+// flag). Uses replaceState so live edits don't pollute browser history.
+function writeUrl(): void {
+  const search = buildSearch(
+    { providerId: providerId.value, categorySlug: categorySlug.value, keyword: keyword.value },
+    defaultProviderId,
+  )
+  history.replaceState(null, '', window.location.pathname + search)
 }
 
 let debounce: number | undefined
 function scheduleLoad(): void {
   window.clearTimeout(debounce)
-  debounce = window.setTimeout(() => void loadMemes(), 350)
+  debounce = window.setTimeout(() => {
+    writeUrl()
+    void loadMemes()
+  }, 350)
 }
 
 watch(providerId, () => {
@@ -89,12 +138,14 @@ watch(providerId, () => {
   categorySlug.value = ''
   keyword.value = ''
   result.value = null
+  writeUrl()
   void loadCategories()
   void loadMemes()
 })
 
 watch(categorySlug, () => {
   result.value = null
+  writeUrl()
   void loadMemes()
 })
 
@@ -102,6 +153,28 @@ watch(keyword, () => {
   result.value = null
   scheduleLoad()
 })
+
+async function share(): Promise<void> {
+  const search = buildSearch(
+    {
+      providerId: providerId.value,
+      categorySlug: categorySlug.value,
+      keyword: keyword.value,
+      spin: true,
+    },
+    defaultProviderId,
+  )
+  const url = window.location.origin + window.location.pathname + search
+  try {
+    await navigator.clipboard.writeText(url)
+  } catch {
+    window.prompt('Copy this link:', url)
+    return
+  }
+  copied.value = true
+  window.clearTimeout(copiedTimer)
+  copiedTimer = window.setTimeout(() => (copied.value = false), 1500)
+}
 
 function onResult(meme: Meme): void {
   result.value = meme
@@ -149,6 +222,13 @@ onMounted(() => {
             v-model="keyword"
           />
         </div>
+
+        <div class="field">
+          <label>&nbsp;</label>
+          <button type="button" class="share-btn" @click="share">
+            {{ copied ? 'Copied!' : 'Share' }}
+          </button>
+        </div>
       </div>
     </header>
 
@@ -167,6 +247,7 @@ onMounted(() => {
 
       <template v-else>
         <RouletteWheel
+          ref="wheel"
           v-show="!result"
           :memes="wheelMemes"
           :disabled="!canSpin"

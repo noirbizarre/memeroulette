@@ -97,6 +97,27 @@ body {
   outline-offset: 1px;
 }
 
+.share-btn {
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.share-btn:hover {
+  filter: brightness(1.1);
+}
+
+.share-btn:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .bar-error {
   display: flex;
   align-items: center;
