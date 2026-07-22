@@ -62,6 +62,27 @@ and unit-testable.
 Implement the `MemeProvider` interface (see `src/types.ts`) and register the instance
 in `src/providers/index.ts`. No other changes are required.
 
+## Local memes
+
+The built-in **Local** provider serves images from `public/memes/<category>/`:
+
+```
+public/memes/
+  reaction/
+    drake-hotline-bling.svg
+  animals/
+    grumpy-cat.svg
+```
+
+Each first-level directory is a category and each image inside it is a meme;
+display names are derived from the directory/file names. Supported extensions:
+`png, jpg, jpeg, gif, webp, avif, svg`.
+
+The registry is generated at build time by the `local-memes` Vite plugin
+(`plugins/local-memes.ts`) and consumed via the `virtual:local-memes` module, so
+no registry file is committed. During `pnpm dev`, adding or removing files
+reloads the app automatically.
+
 ## Deployment (GitHub Pages)
 
 Deployment is automated via `.github/workflows/deploy.yml` on every push to `main`.

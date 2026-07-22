@@ -2,15 +2,18 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import RouletteWheel from './components/RouletteWheel.vue'
 import MemeReveal from './components/MemeReveal.vue'
-import { providers } from './providers'
+import ProviderSelect from './components/ProviderSelect.vue'
+import { providers, getProvider } from './providers'
 import { shuffle } from './lib/picker'
-import type { Category, Meme } from './types'
+import type { Category, Meme, MemeProvider } from './types'
 
 // Cap the number of wheel segments for readability.
 const MAX_SEGMENTS = 10
 
-// Provider selection is hidden for now: default to the first registered provider.
-const provider = providers[0]
+// Default to the first registered provider; the picker is shown when more than
+// one provider is available.
+const providerId = ref<string>(providers[0]?.id ?? '')
+const provider = computed<MemeProvider>(() => getProvider(providerId.value) ?? providers[0])
 
 const categorySlug = ref<string>('')
 const keyword = ref<string>('')
@@ -37,7 +40,7 @@ async function loadCategories(): Promise<void> {
   categoriesLoading.value = true
   categoriesError.value = null
   try {
-    categories.value = await provider.listCategories()
+    categories.value = await provider.value.listCategories()
   } catch (e) {
     categoriesError.value = e instanceof Error ? e.message : 'Failed to load categories.'
   } finally {
@@ -57,7 +60,7 @@ async function loadMemes(): Promise<void> {
   wheelMemes.value = []
   result.value = null
   try {
-    const memes = await provider.listMemes({
+    const memes = await provider.value.listMemes({
       category: selectedCategory.value,
       keyword: keyword.value,
       limit: 100,
@@ -80,6 +83,15 @@ function scheduleLoad(): void {
   window.clearTimeout(debounce)
   debounce = window.setTimeout(() => void loadMemes(), 350)
 }
+
+watch(providerId, () => {
+  // Switching provider invalidates the current categories and pool.
+  categorySlug.value = ''
+  keyword.value = ''
+  result.value = null
+  void loadCategories()
+  void loadMemes()
+})
 
 watch(categorySlug, () => {
   result.value = null
@@ -115,6 +127,8 @@ onMounted(() => {
       </div>
 
       <div class="filters">
+        <ProviderSelect v-if="providers.length > 1" v-model="providerId" :providers="providers" />
+
         <div class="field">
           <label for="category-select">Category</label>
           <select id="category-select" class="select" v-model="categorySlug">
