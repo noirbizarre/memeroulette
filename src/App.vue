@@ -31,6 +31,14 @@ const keyword = ref<string>(initial.keyword ?? '')
 // One-shot: auto-spin on the initial load only when the deep link requested it.
 let pendingAutoSpin = initial.spin === true
 
+// Filters panel starts collapsed on mobile when the deep link auto-spins, so the
+// full wheel is visible while it spins. (CSS only hides `.filters` <=640px.)
+const filtersOpen = ref(initial.spin !== true)
+
+function toggleFilters(): void {
+  filtersOpen.value = !filtersOpen.value
+}
+
 const wheel = ref<InstanceType<typeof RouletteWheel> | null>(null)
 
 const copied = ref(false)
@@ -197,12 +205,24 @@ onMounted(() => {
 
 <template>
   <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <h1>🎯 Meme Roulette</h1>
+    <header class="topbar" :class="{ 'filters-open': filtersOpen }">
+      <div class="topbar-head">
+        <div class="brand">
+          <h1>🎯 Meme Roulette</h1>
+        </div>
+        <button
+          type="button"
+          class="filters-toggle"
+          :aria-expanded="filtersOpen"
+          aria-controls="filters-panel"
+          @click="toggleFilters"
+        >
+          <span aria-hidden="true">☰</span>
+          <span class="sr-only">Filters</span>
+        </button>
       </div>
 
-      <div class="filters">
+      <div id="filters-panel" class="filters">
         <ProviderSelect v-if="providers.length > 1" v-model="providerId" :providers="providers" />
 
         <div class="field">
