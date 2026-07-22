@@ -131,11 +131,15 @@ defineExpose({ spin })
       <div class="pointer" aria-hidden="true"></div>
       <svg
         class="wheel"
-        :class="{ spinning }"
+        :class="{ spinning, clickable: !disabled && !spinning && memes.length > 0 }"
         :viewBox="`0 0 ${SIZE} ${SIZE}`"
         :style="wheelStyle"
-        role="img"
-        aria-label="Meme roulette wheel"
+        role="button"
+        tabindex="0"
+        aria-label="Spin the meme roulette wheel"
+        @click="spin"
+        @keydown.enter.prevent="spin"
+        @keydown.space.prevent="spin"
       >
         <defs>
           <clipPath v-for="(seg, i) in segments" :id="seg.clipId" :key="i">
@@ -230,6 +234,17 @@ defineExpose({ spin })
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   transition: transform 4s cubic-bezier(0.16, 1, 0.3, 1);
   background: #2a2a40;
+  outline: none;
+}
+
+.wheel.clickable {
+  cursor: pointer;
+}
+
+.wheel:focus-visible {
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 4px var(--accent);
 }
 
 .spin-btn {
