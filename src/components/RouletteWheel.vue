@@ -35,7 +35,6 @@ interface Segment {
   meme: Meme
   color: string
   path: string
-  clipId: string
   imgTransform: string
   midDeg: number
 }
@@ -52,7 +51,6 @@ const segments = computed<Segment[]>(() => {
       meme,
       color: PALETTE[i % PALETTE.length],
       path: arcPath(start, end),
-      clipId: `seg-clip-${i}`,
       imgTransform: imageTransform(mid),
       midDeg: mid,
     }
@@ -79,12 +77,12 @@ function imageTransform(midDeg: number): string {
   return `translate(${cx} ${cy}) rotate(${midDeg})`
 }
 
-// Image box (in the rotated local frame, centred at origin).
+// Question-mark box (in the rotated local frame, centred at origin).
 const imgBox = computed(() => {
   const n = props.memes.length || 1
-  // Larger images when fewer segments; clamp to a sensible range.
+  // Larger marks when fewer segments; clamp to a sensible range.
   const size = Math.min(RADIUS * 0.8, Math.max(RADIUS * 0.35, (2 * Math.PI * RADIUS * 0.6) / n))
-  return { size, offset: -size / 2 }
+  return { size }
 })
 
 function spin(): void {
@@ -141,26 +139,18 @@ defineExpose({ spin })
         @keydown.enter.prevent="spin"
         @keydown.space.prevent="spin"
       >
-        <defs>
-          <clipPath v-for="(seg, i) in segments" :id="seg.clipId" :key="i">
-            <path :d="seg.path" />
-          </clipPath>
-        </defs>
-
         <g v-if="segments.length">
           <g v-for="(seg, i) in segments" :key="i">
             <path :d="seg.path" :fill="seg.color" stroke="#1b1b2f" stroke-width="1.5" />
-            <g :clip-path="`url(#${seg.clipId})`">
-              <image
-                :href="seg.meme.url"
-                :transform="seg.imgTransform"
-                :x="imgBox.offset"
-                :y="imgBox.offset"
-                :width="imgBox.size"
-                :height="imgBox.size"
-                preserveAspectRatio="xMidYMid slice"
-              />
-            </g>
+            <text
+              :transform="seg.imgTransform"
+              text-anchor="middle"
+              dominant-baseline="central"
+              fill="#fff"
+              font-weight="700"
+              :font-size="imgBox.size * 0.6"
+              pointer-events="none"
+            >?</text>
             <path
               :d="seg.path"
               fill="none"
