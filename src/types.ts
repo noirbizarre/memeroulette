@@ -25,6 +25,11 @@ export interface MemeProvider {
   id: string
   /** Human-readable name shown in the UI. */
   name: string
+  /**
+   * Whether this provider supports free-text keyword/filter search. When
+   * false or omitted, the UI hides the keyword input for this provider.
+   */
+  supportsKeyword?: boolean
   /** List the categories/collections available from this provider. */
   listCategories(): Promise<Category[]>
   /**

@@ -54,6 +54,9 @@ const selectedCategory = computed<Category | null>(
 )
 const canSpin = computed(() => wheelMemes.value.length > 0 && !memesLoading.value)
 
+// Only providers that declare keyword support get the Filter/keyword input.
+const keywordSupported = computed(() => provider.value.supportsKeyword === true)
+
 async function loadCategories(): Promise<void> {
   categoriesLoading.value = true
   categoriesError.value = null
@@ -212,7 +215,7 @@ onMounted(() => {
           </select>
         </div>
 
-        <div class="field grow">
+        <div class="field grow" v-if="keywordSupported">
           <label for="keyword-input">Filter / keyword</label>
           <input
             id="keyword-input"

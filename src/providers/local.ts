@@ -17,6 +17,7 @@ function toUrl(file: string): string {
 export class LocalProvider implements MemeProvider {
   readonly id = 'local'
   readonly name = 'Local'
+  readonly supportsKeyword = true
 
   async listCategories(): Promise<Category[]> {
     return registry.categories.map((c) => ({

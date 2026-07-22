@@ -68,6 +68,7 @@ function templateToMeme(t: ApiTemplate): Meme {
 export class JustMemeProvider implements MemeProvider {
   readonly id = 'justmeme'
   readonly name = 'justmeme.wtf'
+  readonly supportsKeyword = true
 
   async listCategories(): Promise<Category[]> {
     const data = await getJson<CategoriesResponse>('/categories')
