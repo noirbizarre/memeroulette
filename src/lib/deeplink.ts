@@ -2,11 +2,15 @@
 // URL query string so selections can be shared and restored. Pure and DOM-free
 // so they can be unit-tested in isolation.
 
+import type { Meme } from '../types'
+
 export interface DeepLinkState {
   providerId?: string
   categorySlug?: string
   keyword?: string
   spin?: boolean
+  /** A specific revealed meme, so a spin result can be shared and restored. */
+  meme?: Meme
 }
 
 /**
@@ -28,6 +32,21 @@ export function parseDeepLink(search: string): DeepLinkState {
   if (keyword) state.keyword = keyword
 
   if (params.get('spin') === '1') state.spin = true
+
+  // A shared result carries the full meme. It requires at least an id (`m`) and
+  // an image url (`mu`); the name (`mn`) falls back to the id when absent.
+  const memeId = params.get('m')?.trim()
+  const memeUrl = params.get('mu')?.trim()
+  if (memeId && memeUrl) {
+    const memeName = params.get('mn')?.trim()
+    const memePageUrl = params.get('mp')?.trim()
+    state.meme = {
+      id: memeId,
+      name: memeName || memeId,
+      url: memeUrl,
+      ...(memePageUrl ? { pageUrl: memePageUrl } : {}),
+    }
+  }
 
   return state
 }
@@ -53,6 +72,16 @@ export function buildSearch(state: DeepLinkState, defaultProviderId: string): st
   if (keyword) params.set('q', keyword)
 
   if (state.spin) params.set('spin', '1')
+
+  // Encode a specific revealed meme so a spin result can be shared verbatim,
+  // without any network lookup on the receiving end.
+  const meme = state.meme
+  if (meme?.id && meme.url) {
+    params.set('m', meme.id)
+    params.set('mn', meme.name)
+    params.set('mu', meme.url)
+    if (meme.pageUrl) params.set('mp', meme.pageUrl)
+  }
 
   const query = params.toString()
   return query ? `?${query}` : ''

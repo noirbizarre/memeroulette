@@ -4,10 +4,13 @@ import type { Meme } from '../types'
 
 const props = defineProps<{
   meme: Meme | null
+  /** Show a transient "Copied!" state on the Share button (clipboard fallback). */
+  copied?: boolean
 }>()
 
 defineEmits<{
   (e: 'again'): void
+  (e: 'share'): void
 }>()
 
 const imageError = ref(false)
@@ -37,6 +40,9 @@ watch(
 
     <div class="reveal-actions">
       <button type="button" class="again-btn" @click="$emit('again')">Spin again</button>
+      <button type="button" class="share-btn" @click="$emit('share')">
+        {{ copied ? 'Copied!' : 'Share' }}
+      </button>
       <a v-if="meme.pageUrl" :href="meme.pageUrl" target="_blank" rel="noopener" class="link">
         View on justmeme.wtf ↗
       </a>

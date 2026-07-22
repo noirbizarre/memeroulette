@@ -29,7 +29,13 @@ const categorySlug = ref<string>(initial.categorySlug ?? '')
 const keyword = ref<string>(initial.keyword ?? '')
 
 // One-shot: auto-spin on the initial load only when the deep link requested it.
-let pendingAutoSpin = initial.spin === true
+// Suppressed when a specific meme is being restored (we show it directly instead).
+let pendingAutoSpin = initial.spin === true && !initial.meme
+
+// One-shot: a shared result link carries a full meme to reveal directly, skipping
+// the wheel. Consumed after the first `loadMemes()` so its `result = null` reset
+// does not clobber the restored meme.
+let pendingRestoreMeme: Meme | null = initial.meme ?? null
 
 // Filters panel starts collapsed on mobile when the deep link auto-spins, so the
 // full wheel is visible while it spins. (CSS only hides `.filters` <=640px.)
@@ -43,6 +49,10 @@ const wheel = ref<InstanceType<typeof RouletteWheel> | null>(null)
 
 const copied = ref(false)
 let copiedTimer: number | undefined
+
+// Transient "Copied!" state for the reveal's Share button (clipboard fallback).
+const resultCopied = ref(false)
+let resultCopiedTimer: number | undefined
 
 const categories = ref<Category[]>([])
 const categoriesLoading = ref(false)
@@ -108,6 +118,14 @@ async function loadMemes(): Promise<void> {
     memesError.value = e instanceof Error ? e.message : 'Failed to load memes.'
   } finally {
     memesLoading.value = false
+  }
+
+  // Reveal the shared meme directly on the first load, once the pool is ready so
+  // "Spin again" has something to draw from. Consumed exactly once.
+  if (pendingRestoreMeme && !memesError.value) {
+    result.value = pendingRestoreMeme
+    pendingRestoreMeme = null
+    return
   }
 
   if (autoSpin) {
@@ -185,6 +203,44 @@ async function share(): Promise<void> {
   copied.value = true
   window.clearTimeout(copiedTimer)
   copiedTimer = window.setTimeout(() => (copied.value = false), 1500)
+}
+
+// Share the current spin result via a deep link that encodes the meme itself, so
+// the recipient sees the exact same meme without a spin. Uses the native share
+// sheet when available, falling back to copying the link to the clipboard.
+async function shareResult(): Promise<void> {
+  const meme = result.value
+  if (!meme) return
+
+  const search = buildSearch(
+    {
+      providerId: providerId.value,
+      categorySlug: categorySlug.value,
+      keyword: keyword.value,
+      meme,
+    },
+    defaultProviderId,
+  )
+  const url = window.location.origin + window.location.pathname + search
+
+  if (typeof navigator.share === 'function') {
+    try {
+      await navigator.share({ title: 'Meme Roulette', text: meme.name, url })
+      return
+    } catch {
+      // User dismissed the share sheet, or it is unavailable: fall back to copy.
+    }
+  }
+
+  try {
+    await navigator.clipboard.writeText(url)
+  } catch {
+    window.prompt('Copy this link:', url)
+    return
+  }
+  resultCopied.value = true
+  window.clearTimeout(resultCopiedTimer)
+  resultCopiedTimer = window.setTimeout(() => (resultCopied.value = false), 1500)
 }
 
 function onResult(meme: Meme): void {
@@ -278,7 +334,13 @@ onMounted(() => {
           @spinning="spinning = $event"
         />
 
-        <MemeReveal v-if="result && !spinning" :meme="result" @again="again" />
+        <MemeReveal
+          v-if="result && !spinning"
+          :meme="result"
+          :copied="resultCopied"
+          @again="again"
+          @share="shareResult"
+        />
       </template>
     </main>
 

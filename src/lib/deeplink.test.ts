@@ -36,6 +36,31 @@ describe('parseDeepLink', () => {
   it('trims values', () => {
     expect(parseDeepLink('?q=%20drake%20')).toEqual({ keyword: 'drake' })
   })
+
+  it('restores a meme when id and url are present', () => {
+    const state = parseDeepLink(
+      '?m=reaction%2Fdrake&mn=Drake&mu=https%3A%2F%2Fx%2Fd.png&mp=https%3A%2F%2Fjustmeme.wtf%2Fmeme%2Fdrake',
+    )
+    expect(state.meme).toEqual({
+      id: 'reaction/drake',
+      name: 'Drake',
+      url: 'https://x/d.png',
+      pageUrl: 'https://justmeme.wtf/meme/drake',
+    })
+  })
+
+  it('falls back the meme name to its id when absent', () => {
+    expect(parseDeepLink('?m=abc&mu=https%3A%2F%2Fx%2Fd.png').meme).toEqual({
+      id: 'abc',
+      name: 'abc',
+      url: 'https://x/d.png',
+    })
+  })
+
+  it('ignores an incomplete meme (missing id or url)', () => {
+    expect(parseDeepLink('?mn=Drake&mu=https%3A%2F%2Fx%2Fd.png').meme).toBeUndefined()
+    expect(parseDeepLink('?m=abc&mn=Drake').meme).toBeUndefined()
+  })
 })
 
 describe('buildSearch', () => {
@@ -64,6 +89,49 @@ describe('buildSearch', () => {
 
   it('round-trips a non-default provider with category and keyword', () => {
     const state = { providerId: 'justmeme', categorySlug: 'cats', keyword: 'drake' }
+    const search = buildSearch(state, DEFAULT)
+    expect(parseDeepLink(search)).toEqual(state)
+  })
+
+  it('encodes a meme payload', () => {
+    const search = buildSearch(
+      {
+        meme: {
+          id: 'reaction/drake',
+          name: 'Drake',
+          url: 'https://x/d.png',
+          pageUrl: 'https://justmeme.wtf/meme/drake',
+        },
+      },
+      DEFAULT,
+    )
+    const params = new URLSearchParams(search)
+    expect(params.get('m')).toBe('reaction/drake')
+    expect(params.get('mn')).toBe('Drake')
+    expect(params.get('mu')).toBe('https://x/d.png')
+    expect(params.get('mp')).toBe('https://justmeme.wtf/meme/drake')
+  })
+
+  it('omits the optional pageUrl when absent', () => {
+    const search = buildSearch(
+      { meme: { id: 'abc', name: 'ABC', url: 'https://x/d.png' } },
+      DEFAULT,
+    )
+    expect(new URLSearchParams(search).has('mp')).toBe(false)
+  })
+
+  it('round-trips a full state including a meme', () => {
+    const state = {
+      providerId: 'justmeme',
+      categorySlug: 'cats',
+      keyword: 'drake',
+      meme: {
+        id: 'reaction/drake',
+        name: 'Drake',
+        url: 'https://x/d.png',
+        pageUrl: 'https://justmeme.wtf/meme/drake',
+      },
+    }
     const search = buildSearch(state, DEFAULT)
     expect(parseDeepLink(search)).toEqual(state)
   })
