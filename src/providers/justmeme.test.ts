@@ -51,7 +51,7 @@ describe('JustMemeProvider', () => {
       total: 1,
     })
 
-    const memes = await provider.listMemes({ category: { slug: 'reaction', name: 'reaction' } })
+    const memes = await provider.listMemes({ categorySlug: 'reaction' })
     expect(memes).toEqual([
       {
         id: 'drake-hotline-bling',
@@ -70,7 +70,7 @@ describe('JustMemeProvider', () => {
     }))
     vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch)
 
-    await provider.listMemes({ category: { slug: 'animal', name: 'animal' }, limit: 500 })
+    await provider.listMemes({ categorySlug: 'animal', limit: 500 })
 
     const calledUrl = String(fetchMock.mock.calls[0][0])
     expect(calledUrl).toContain('category=animal')

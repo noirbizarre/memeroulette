@@ -28,11 +28,11 @@ export class LocalProvider implements MemeProvider {
   }
 
   async listMemes(query: MemeQuery = {}): Promise<Meme[]> {
-    const { category, keyword, limit = 50 } = query
+    const { categorySlug, keyword, limit = 50 } = query
     const capped = Math.min(Math.max(limit, 1), 100)
 
-    let pool = category
-      ? (registry.memes[category.slug] ?? [])
+    let pool = categorySlug
+      ? (registry.memes[categorySlug] ?? [])
       : Object.values(registry.memes).flat()
 
     const kw = keyword?.trim().toLowerCase() ?? ''

@@ -67,9 +67,6 @@ const memesError = ref<string | null>(null)
 const spinning = ref(false)
 const result = ref<Meme | null>(null)
 
-const selectedCategory = computed<Category | null>(
-  () => categories.value.find((c) => c.slug === categorySlug.value) ?? null,
-)
 const canSpin = computed(() => wheelMemes.value.length > 0 && !memesLoading.value)
 
 // Only providers that declare keyword support get the Filter/keyword input.
@@ -101,7 +98,7 @@ async function loadMemes(): Promise<void> {
   let autoSpin = false
   try {
     const memes = await provider.value.listMemes({
-      category: selectedCategory.value,
+      categorySlug: categorySlug.value || null,
       keyword: keyword.value,
       limit: 100,
     })

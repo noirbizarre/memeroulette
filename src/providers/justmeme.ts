@@ -80,7 +80,7 @@ export class JustMemeProvider implements MemeProvider {
   }
 
   async listMemes(query: MemeQuery = {}): Promise<Meme[]> {
-    const { category, keyword, limit = 50 } = query
+    const { categorySlug, keyword, limit = 50 } = query
     const capped = Math.min(Math.max(limit, 1), 100)
     const trimmed = keyword?.trim() ?? ''
 
@@ -90,9 +90,9 @@ export class JustMemeProvider implements MemeProvider {
       const params = new URLSearchParams({ q: trimmed })
       const data = await getJson<TemplatesResponse>(`/templates/search?${params.toString()}`)
       let memes = (data.templates ?? []).map(templateToMeme)
-      if (category) {
+      if (categorySlug) {
         const withCat = (data.templates ?? []).filter((t) =>
-          (t.categories ?? []).includes(category.slug),
+          (t.categories ?? []).includes(categorySlug),
         )
         // Only narrow when the category filter still leaves matches.
         if (withCat.length > 0) memes = withCat.map(templateToMeme)
@@ -101,7 +101,7 @@ export class JustMemeProvider implements MemeProvider {
     }
 
     const params = new URLSearchParams({ limit: String(capped), page: '1' })
-    if (category) params.set('category', category.slug)
+    if (categorySlug) params.set('category', categorySlug)
     const data = await getJson<TemplatesResponse>(`/templates?${params.toString()}`)
     return (data.templates ?? []).map(templateToMeme)
   }

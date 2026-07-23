@@ -12,8 +12,8 @@ export interface Category {
 }
 
 export interface MemeQuery {
-  /** Restrict to a category. When omitted, all categories are considered. */
-  category?: Category | null
+  /** Restrict to a category by slug. When omitted, all categories are considered. */
+  categorySlug?: string | null
   /** Free-text keyword/filter. When omitted, no text filtering is applied. */
   keyword?: string
   /** Cap how many memes are returned. */

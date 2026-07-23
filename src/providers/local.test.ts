@@ -31,7 +31,7 @@ describe('LocalProvider', () => {
 
   it('returns memes for a category with base-prefixed urls', async () => {
     const memes = await provider.listMemes({
-      category: { slug: firstCategory.slug, name: firstCategory.name },
+      categorySlug: firstCategory.slug,
     })
     const expected = registry.memes[firstCategory.slug]
     expect(memes).toHaveLength(expected.length)
